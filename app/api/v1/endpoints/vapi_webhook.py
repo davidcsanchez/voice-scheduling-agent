@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import ValidationError
@@ -10,6 +11,7 @@ from app.services.calendar_service import CalendarService
 from app.services.user_service import UserService
 
 router = APIRouter(tags=["vapi"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/vapi/webhook")
@@ -41,6 +43,13 @@ async def vapi_webhook(
             event_result = calendar_service.create_event(user_id, meeting)
             results.append({"toolCallId": tool_call["id"], "result": event_result})
         except (ValueError, ValidationError) as error:
+            logger.warning(
+                "Vapi tool call failed. tool_call_id=%s tool=%s resolved_user_id=%s error=%s",
+                tool_call.get("id"),
+                tool_call.get("name"),
+                user_service.resolve_user_id(payload),
+                str(error),
+            )
             results.append(
                 {"toolCallId": tool_call["id"], "result": {"error": str(error)}}
             )

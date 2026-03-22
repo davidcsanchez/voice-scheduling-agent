@@ -220,7 +220,10 @@ def _build_dashboard_html(
                 stopButton.disabled = false;
                 setStatus("Starting voice call...");
                 try {{
-                    await vapi.start(vapiAssistantId, {{ variableValues: {{ customer_id: customerId }} }});
+                    await vapi.start(vapiAssistantId, {{
+                        metadata: {{ customer_id: customerId }},
+                        variableValues: {{ customer_id: customerId }}
+                    }});
                     logDebug("vapi.start resolved successfully.");
                     setStatus("Listening...", "ok");
                 }} catch (error) {{
