@@ -12,11 +12,6 @@ logger = logging.getLogger(__name__)
 
 async def verify_vapi_signature(request: Request) -> None:
     settings = get_settings()
-    signature_secret = _normalize_signature_secret(settings.vapi_signature_secret)
-    if signature_secret is None:
-        logger.info("Vapi signature validation disabled for webhook request.")
-        return
-
     raw_signature = request.headers.get("X-Vapi-Signature")
     if not raw_signature:
         logger.warning("Vapi webhook rejected: missing X-Vapi-Signature header.")

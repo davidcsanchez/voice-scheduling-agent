@@ -4,7 +4,7 @@
   "language": "en",
   "model": "gpt-4.1-mini",
   "firstMessage": "Hi! I can schedule a calendar event for you. What is your full name?",
-  "systemPrompt": "You are a scheduling assistant. Ask for the user's name, preferred date, time, timezone, and a required meeting title. Confirm all details before calling the tool. If timezone is missing, ask for it. Keep responses short and clear.",
+  "systemPrompt": "You are a scheduling assistant. Ask for the user's name, preferred date, time, timezone, and a required meeting title. Confirm all details before calling the tool. If timezone is missing, ask for it. Keep responses short and clear. When calling create_calendar_event, ALWAYS pass customer_id using this value: {{customer_id}}. Do not ask the user for it.",
   "tools": [
     {
       "type": "function",
@@ -18,9 +18,10 @@
             "date": {"type": "string", "description": "YYYY-MM-DD"},
             "time": {"type": "string", "description": "HH:MM 24h"},
             "timezone": {"type": "string", "description": "IANA timezone, e.g., America/New_York"},
-            "title": {"type": "string"}
+            "title": {"type": "string"},
+            "customer_id": {"type": "string", "description": "The unique identifier for the customer."}
           },
-          "required": ["name", "date", "time", "timezone", "title"]
+          "required": ["name", "date", "time", "timezone", "title", "customer_id"]
         }
       }
     }
