@@ -12,6 +12,7 @@ class FakeSettings:
     google_client_secret = "client-secret"
     google_redirect_uri = "http://localhost:8000/api/v1/auth/google/callback"
     google_scopes_list = ["https://www.googleapis.com/auth/calendar.events"]
+    default_user_id = "default"
 
 
 class FakeStateStore:
@@ -33,10 +34,12 @@ class FakeTokenStore:
     def __init__(self) -> None:
         self.saved_user_id = None
         self.saved_token = None
+        self.saved_records = []
 
     def save_tokens(self, user_id: str, token_json: str) -> None:
         self.saved_user_id = user_id
         self.saved_token = token_json
+        self.saved_records.append((user_id, token_json))
 
 
 class FakeCredentials:
@@ -105,8 +108,8 @@ def test_google_auth_callback_saves_tokens_for_state_user(monkeypatch: pytest.Mo
         token_store=token_store,
     )
 
-    assert token_store.saved_user_id == "customer-42"
-    assert token_store.saved_token == '{"access_token":"token"}'
+    assert ("customer-42", '{"access_token":"token"}') in token_store.saved_records
+    assert ("default", '{"access_token":"token"}') in token_store.saved_records
     assert response.headers["location"] == "/dashboard?customer_id=customer-42"
 
 
