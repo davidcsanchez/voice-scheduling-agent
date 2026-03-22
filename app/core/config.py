@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     google_scopes: str = "https://www.googleapis.com/auth/calendar.events"
     sqlite_path: str = "app.db"
     vapi_signature_secret: str | None = None
+    vapi_public_key: str | None = None
+    vapi_assistant_id: str | None = None
     default_meeting_duration_minutes: int = 30
     default_user_id: str = "default"
 

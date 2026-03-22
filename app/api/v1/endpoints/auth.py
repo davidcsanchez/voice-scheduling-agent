@@ -1,5 +1,7 @@
+from urllib.parse import urlencode
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
 
 from app.api.deps import get_state_store, get_token_store
@@ -10,10 +12,11 @@ router = APIRouter(tags=["auth"])
 
 @router.get("/auth/google/start")
 def start_google_auth(
+    customer_id: str = Query(..., min_length=1),
     settings: Settings = Depends(get_settings),
     state_store=Depends(get_state_store),
 ) -> RedirectResponse:
-    state = state_store.create_state()
+    state = state_store.create_state(customer_id)
     flow = Flow.from_client_config(
         {
             "web": {
@@ -43,8 +46,9 @@ def google_auth_callback(
     settings: Settings = Depends(get_settings),
     state_store=Depends(get_state_store),
     token_store=Depends(get_token_store),
-) -> HTMLResponse:
-    if not state_store.consume_state(state):
+) -> RedirectResponse:
+    user_id = state_store.consume_state(state)
+    if user_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid state")
 
     flow = Flow.from_client_config(
@@ -64,15 +68,10 @@ def google_auth_callback(
     flow.fetch_token(code=code)
 
     credentials_json = flow.credentials.to_json()
-    token_store.save_tokens(settings.default_user_id, credentials_json)
+    token_store.save_tokens(user_id, credentials_json)
 
-    html = """
-    <html>
-      <body>
-        <h3>Google Calendar connected.</h3>
-        <p>You can close this window.</p>
-        <script>window.close();</script>
-      </body>
-    </html>
-    """
-    return HTMLResponse(html)
+    query = urlencode({"customer_id": user_id})
+    return RedirectResponse(
+        url=f"/dashboard?{query}",
+        status_code=status.HTTP_302_FOUND,
+    )

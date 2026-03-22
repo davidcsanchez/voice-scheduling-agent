@@ -9,8 +9,9 @@ A real-time voice scheduling assistant using Vapi and Google Calendar. The backe
 ## How to test the agent
 
 1. Complete Google OAuth:
-   - Open `https://YOUR-RENDER-URL.onrender.com/api/v1/auth/google/start`
+   - Open `https://YOUR-RENDER-URL.onrender.com/api/v1/auth/google/start?customer_id=YOUR_CUSTOMER_ID`
    - Sign in and grant access
+   - After callback, you will be redirected to `/dashboard?customer_id=YOUR_CUSTOMER_ID`
 2. Configure your Vapi agent with the tool schema in `vapi_agent.json` and set:
    - `toolWebhookUrl` to `https://YOUR-RENDER-URL.onrender.com/api/v1/vapi/webhook`
 3. Call the agent and provide name, date, time, timezone, and title.
@@ -24,7 +25,15 @@ A real-time voice scheduling assistant using Vapi and Google Calendar. The backe
 3. Run the server:
    - `uvicorn app.main:app --reload`
 4. Start OAuth:
-   - `http://localhost:8000/api/v1/auth/google/start`
+   - `http://localhost:8000/api/v1/auth/google/start?customer_id=demo-user`
+5. Open the dashboard (if not redirected automatically):
+   - `http://localhost:8000/dashboard?customer_id=demo-user`
+
+## Required environment variables
+
+- `VAPI_PUBLIC_KEY`: Public key used by the browser SDK.
+- `VAPI_ASSISTANT_ID`: Assistant ID started from the dashboard.
+- `VAPI_SIGNATURE_SECRET`: Secret used only by backend webhook verification.
 
 ## Google Calendar integration
 
@@ -53,4 +62,4 @@ A real-time voice scheduling assistant using Vapi and Google Calendar. The backe
 ## Notes
 
 - Replace `YOUR-RENDER-URL` with your actual Render service URL.
-- If you want per-user calendars, use Vapi metadata to map to user IDs and store separate tokens.
+- Tokens are now stored per `customer_id` provided in OAuth start and reused by webhook payload `customer.id`.

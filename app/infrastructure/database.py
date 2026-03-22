@@ -29,11 +29,22 @@ class SQLiteDatabase:
                 """
                 CREATE TABLE IF NOT EXISTS oauth_state (
                     state TEXT PRIMARY KEY,
-                    created_at TEXT NOT NULL
+                    created_at TEXT NOT NULL,
+                    user_id TEXT NOT NULL
                 )
                 """
             )
+            self._ensure_oauth_state_user_id_column(connection)
             connection.commit()
+
+    def _ensure_oauth_state_user_id_column(self, connection: sqlite3.Connection) -> None:
+        columns = connection.execute("PRAGMA table_info(oauth_state)").fetchall()
+        has_user_id_column = any(column[1] == "user_id" for column in columns)
+        if has_user_id_column:
+            return
+        connection.execute(
+            "ALTER TABLE oauth_state ADD COLUMN user_id TEXT NOT NULL DEFAULT 'default'"
+        )
 
 
 class TokenStore:
@@ -65,27 +76,27 @@ class OAuthStateStore:
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
 
-    def create_state(self) -> str:
+    def create_state(self, user_id: str) -> str:
         state = self._generate_state()
         with self._database.connect() as connection:
             connection.execute(
-                "INSERT INTO oauth_state (state, created_at) VALUES (?, ?)",
-                (state, datetime.utcnow().isoformat()),
+                "INSERT INTO oauth_state (state, created_at, user_id) VALUES (?, ?, ?)",
+                (state, datetime.utcnow().isoformat(), user_id),
             )
             connection.commit()
         return state
 
-    def consume_state(self, state: str) -> bool:
+    def consume_state(self, state: str) -> str | None:
         with self._database.connect() as connection:
             row = connection.execute(
-                "SELECT state FROM oauth_state WHERE state = ?",
+                "SELECT user_id FROM oauth_state WHERE state = ?",
                 (state,),
             ).fetchone()
             if not row:
-                return False
+                return None
             connection.execute("DELETE FROM oauth_state WHERE state = ?", (state,))
             connection.commit()
-        return True
+        return str(row["user_id"])
 
     def _generate_state(self) -> str:
         return base64.urlsafe_b64encode(os.urandom(24)).decode("utf-8")

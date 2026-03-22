@@ -4,7 +4,7 @@ class UserService:
 
     def resolve_user_id(self, payload: dict) -> str:
         customer = payload.get("customer") or {}
-        user_id = customer.get("number") or customer.get("id")
+        user_id = customer.get("id") or customer.get("number")
         if user_id:
             return str(user_id)
         return self._default_user_id
