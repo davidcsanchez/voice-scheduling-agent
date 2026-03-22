@@ -23,12 +23,19 @@ async def vapi_webhook(
     await verify_vapi_signature(request)
     payload = await request.json()
     tool_calls = _extract_tool_calls(payload)
+    logger.info("Vapi webhook received. extracted_tool_calls=%s", len(tool_calls))
     if not tool_calls:
+        logger.warning("Vapi webhook payload has no tool calls.")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No tool calls")
 
     results = []
     for tool_call in tool_calls:
         if tool_call["name"] != "create_calendar_event":
+            logger.warning(
+                "Unsupported tool requested. tool_call_id=%s tool=%s",
+                tool_call.get("id"),
+                tool_call.get("name"),
+            )
             results.append(
                 {
                     "toolCallId": tool_call["id"],
@@ -41,6 +48,12 @@ async def vapi_webhook(
             meeting = MeetingRequest.model_validate(tool_call["arguments"])
             user_id = user_service.resolve_user_id(payload)
             event_result = calendar_service.create_event(user_id, meeting)
+            logger.info(
+                "Calendar event created. tool_call_id=%s resolved_user_id=%s event_id=%s",
+                tool_call.get("id"),
+                user_id,
+                event_result.get("eventId"),
+            )
             results.append({"toolCallId": tool_call["id"], "result": event_result})
         except (ValueError, ValidationError) as error:
             logger.warning(
@@ -54,7 +67,12 @@ async def vapi_webhook(
                 {"toolCallId": tool_call["id"], "result": {"error": str(error)}}
             )
 
-    return {"toolResults": results}
+    logger.info("Vapi webhook processed. tool_results=%s", len(results))
+
+    return {
+        "toolResults": results,
+        "results": results,
+    }
 
 
 def _extract_tool_calls(payload: dict) -> list[dict]:
