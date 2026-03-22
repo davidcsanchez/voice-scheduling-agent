@@ -148,8 +148,6 @@ def _build_dashboard_html(
     </main>
 
     <script type="module">
-        import Vapi from "https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.5.2/+esm";
-
         const vapiPublicKey = {public_key_json};
         const vapiAssistantId = {assistant_id_json};
         const customerId = {customer_id_json};
@@ -165,16 +163,40 @@ def _build_dashboard_html(
             debugEl.textContent += `\n[${{timestamp}}] ${{message}}`;
         }};
 
+        window.addEventListener("error", (event) => {{
+            logDebug(`Window error: ${{event.message}}`);
+        }});
+
+        window.addEventListener("unhandledrejection", (event) => {{
+            logDebug(`Unhandled rejection: ${{event.reason?.message || event.reason}}`);
+        }});
+
         userIdEl.innerText = customerId;
 
         if (vapiPublicKey && vapiAssistantId) {{
             logDebug("Vapi config found. Initializing SDK...");
-            const vapi = new Vapi(vapiPublicKey);
 
             const setStatus = (text, cssClass = "") => {{
                 statusEl.className = cssClass;
                 statusEl.innerText = text;
             }};
+
+            let vapi = null;
+            try {{
+                const vapiModule = await import("https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.5.2/+esm");
+                const VapiClass = vapiModule.default || vapiModule.Vapi;
+                if (!VapiClass) {{
+                    throw new Error("Vapi class export not found in SDK module");
+                }}
+                vapi = new VapiClass(vapiPublicKey);
+                logDebug("SDK initialized successfully.");
+            }} catch (error) {{
+                logDebug(`SDK initialization failed: ${{error?.message || error}}`);
+                setStatus("Could not initialize Vapi SDK.", "error");
+                talkButton.disabled = true;
+                stopButton.disabled = true;
+                throw error;
+            }}
 
             talkButton.addEventListener("click", async () => {{
                 logDebug("Start button clicked.");
