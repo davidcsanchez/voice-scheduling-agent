@@ -163,6 +163,21 @@ def _build_dashboard_html(
             debugEl.textContent += `\n[${{timestamp}}] ${{message}}`;
         }};
 
+        const resolveVapiConstructor = (moduleObject) => {{
+            let candidate = moduleObject;
+            for (let depth = 0; depth < 5; depth += 1) {{
+                if (typeof candidate === "function") {{
+                    return candidate;
+                }}
+                if (candidate && typeof candidate === "object" && "default" in candidate) {{
+                    candidate = candidate.default;
+                    continue;
+                }}
+                break;
+            }}
+            return null;
+        }};
+
         window.addEventListener("error", (event) => {{
             logDebug(`Window error: ${{event.message}}`);
         }});
@@ -184,10 +199,11 @@ def _build_dashboard_html(
             let vapi = null;
             try {{
                 const vapiModule = await import("https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.5.2/+esm");
-                const VapiClass = vapiModule.default || vapiModule.Vapi;
+                const VapiClass = resolveVapiConstructor(vapiModule) || vapiModule.Vapi;
                 if (!VapiClass) {{
                     throw new Error("Vapi class export not found in SDK module");
                 }}
+                logDebug(`Resolved SDK export type: ${{typeof VapiClass}}`);
                 vapi = new VapiClass(vapiPublicKey);
                 logDebug("SDK initialized successfully.");
             }} catch (error) {{
