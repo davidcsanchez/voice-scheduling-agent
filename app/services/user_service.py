@@ -1,8 +1,5 @@
 class UserService:
-    def __init__(self, default_user_id: str) -> None:
-        self._default_user_id = default_user_id
-
-    def resolve_user_id(self, payload: dict) -> str:
+    def resolve_user_id(self, payload: dict) -> str | None:
         user_id = self._first_non_empty(
             self._read_path(payload, "customer", "id"),
             self._read_path(payload, "customer", "number"),
@@ -14,9 +11,7 @@ class UserService:
             self._read_path(payload, "message", "assistantOverrides", "metadata", "customer_id"),
             self._read_path(payload, "message", "assistantOverrides", "variableValues", "customer_id"),
         )
-        if user_id is not None:
-            return user_id
-        return self._default_user_id
+        return user_id
 
     def _read_path(self, payload: dict, *path: str) -> str | None:
         current: object = payload

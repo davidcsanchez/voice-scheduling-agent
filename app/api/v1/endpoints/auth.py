@@ -83,15 +83,6 @@ def google_auth_callback(
     token_store.save_tokens(user_id, credentials_json)
     logger.warning("Google OAuth tokens persisted. resolved_user_id=%s", user_id)
 
-    default_user_id = settings.default_user_id.strip()
-    if default_user_id and default_user_id != user_id:
-        token_store.save_tokens(default_user_id, credentials_json)
-        logger.warning(
-            "Google OAuth fallback token persisted. fallback_user_id=%s source_user_id=%s",
-            default_user_id,
-            user_id,
-        )
-
     query = urlencode({"customer_id": user_id})
     return RedirectResponse(
         url=f"/dashboard?{query}",

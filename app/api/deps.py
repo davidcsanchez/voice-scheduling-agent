@@ -28,5 +28,4 @@ def get_calendar_service() -> CalendarService:
 
 
 def get_user_service() -> UserService:
-    settings = get_settings()
-    return UserService(settings.default_user_id)
+    return UserService()

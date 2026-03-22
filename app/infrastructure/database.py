@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import logging
 import os
 import sqlite3
@@ -55,6 +56,12 @@ class TokenStore:
         self._database = database
 
     def save_tokens(self, user_id: str, token_json: str) -> None:
+        token_sha256 = self._token_sha256(token_json)
+        logger.warning(
+            "Token save started. user_id=%s token_sha256=%s",
+            user_id,
+            token_sha256,
+        )
         with self._database.connect() as connection:
             connection.execute(
                 """
@@ -65,21 +72,39 @@ class TokenStore:
                 (user_id, token_json),
             )
             connection.commit()
-        logger.info(
-            "Saved Google OAuth tokens. user_id=%s token_chars=%s",
+        logger.warning(
+            "Token save completed. user_id=%s token_sha256=%s token_chars=%s",
             user_id,
+            token_sha256,
             len(token_json),
         )
 
     def load_tokens(self, user_id: str) -> str | None:
+        logger.warning(
+            "Token load started. user_id=%s token_sha256=%s",
+            user_id,
+            "n/a",
+        )
         with self._database.connect() as connection:
             row = connection.execute(
                 "SELECT token_json FROM tokens WHERE user_id = ?",
                 (user_id,),
             ).fetchone()
         found = row is not None
-        logger.info("Loaded Google OAuth tokens. user_id=%s found=%s", user_id, found)
-        return row["token_json"] if row else None
+        token_json = row["token_json"] if row else None
+        token_sha256 = self._token_sha256(token_json)
+        logger.warning(
+            "Token load completed. user_id=%s found=%s token_sha256=%s",
+            user_id,
+            found,
+            token_sha256,
+        )
+        return token_json
+
+    def _token_sha256(self, token_json: str | None) -> str:
+        if token_json is None:
+            return "none"
+        return hashlib.sha256(token_json.encode("utf-8")).hexdigest()
 
 
 class OAuthStateStore:

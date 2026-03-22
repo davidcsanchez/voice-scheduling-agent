@@ -46,7 +46,7 @@ async def vapi_webhook(
 
         try:
             meeting = MeetingRequest.model_validate(tool_call["arguments"])
-            user_id = user_service.resolve_user_id(payload)
+            user_id = _require_user_id(user_service.resolve_user_id(payload))
             event_result = calendar_service.create_event(user_id, meeting)
             logger.info(
                 "Calendar event created. tool_call_id=%s resolved_user_id=%s event_id=%s",
@@ -158,3 +158,11 @@ def _extract_wrapped_arguments(arguments: dict) -> dict:
 def _looks_like_meeting_arguments(arguments: dict) -> bool:
     required = {"name", "date", "time", "timezone", "title"}
     return required.issubset(set(arguments.keys()))
+
+
+def _require_user_id(user_id: str | None) -> str:
+    if user_id is not None and user_id.strip():
+        return user_id.strip()
+    raise ValueError(
+        "Missing customer identity in Vapi payload. Pass customer.id or metadata.customer_id and reconnect OAuth for that same id."
+    )
