@@ -1,0 +1,29 @@
+{
+  "name": "Calendar Scheduler",
+  "voice": "alloy",
+  "language": "en",
+  "model": "gpt-4.1-mini",
+  "firstMessage": "Hi! I can schedule a calendar event for you. What is your full name?",
+  "systemPrompt": "You are a scheduling assistant. Ask for the user's name, preferred date, time, timezone, and a required meeting title. Confirm all details before calling the tool. If timezone is missing, ask for it. Keep responses short and clear.",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "create_calendar_event",
+        "description": "Create a calendar event in Google Calendar.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "date": {"type": "string", "description": "YYYY-MM-DD"},
+            "time": {"type": "string", "description": "HH:MM 24h"},
+            "timezone": {"type": "string", "description": "IANA timezone, e.g., America/New_York"},
+            "title": {"type": "string"}
+          },
+          "required": ["name", "date", "time", "timezone", "title"]
+        }
+      }
+    }
+  ],
+  "toolWebhookUrl": "https://YOUR-RENDER-URL.onrender.com/api/v1/vapi/webhook"
+}
