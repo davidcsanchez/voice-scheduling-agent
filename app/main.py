@@ -220,16 +220,9 @@ def _build_dashboard_html(
                 stopButton.disabled = false;
                 setStatus("Starting voice call...");
                 try {{
-                    const promptConIdReal = `You are a scheduling assistant. The customer_id for this current session is: ${{customerId}}. Never ask the user for this ID.
-
-                    Ask for the user's name, preferred date, time, timezone, and a required meeting title. Confirm the meeting details before calling the tool. If timezone is missing, ask for it.
-
-                    When calling the Calendar tool, you MUST include the exact customer_id provided above. Do not send null. Keep responses short and clear. Once the meeting is scheduled, just say: 'Your meeting is correctly scheduled, goodbye.'`;
-
-                    // Pasamos el prompt sobreescrito junto con la metadata
                     const assistantOverrides = {{
-                        systemPrompt: promptConIdReal,
-                        metadata: {{ customer_id: customerId }}
+
+                        variableValues: {{ customer_id: customerId }},
                     }};
                     logDebug(`Sending customer_id to Vapi: ${{customerId}}`);
                     logDebug(`assistantOverrides: ${{JSON.stringify(assistantOverrides)}}`);
