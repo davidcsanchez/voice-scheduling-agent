@@ -46,7 +46,10 @@ async def vapi_webhook(
 
         try:
             meeting = MeetingRequest.model_validate(tool_call["arguments"])
-            user_id = _require_user_id(user_service.resolve_user_id(payload))
+            user_id = _require_user_id(
+                user_service.resolve_user_id(payload),
+                tool_call["arguments"],
+            )
             event_result = calendar_service.create_event(user_id, meeting)
             logger.info(
                 "Calendar event created. tool_call_id=%s resolved_user_id=%s event_id=%s",
@@ -160,9 +163,35 @@ def _looks_like_meeting_arguments(arguments: dict) -> bool:
     return required.issubset(set(arguments.keys()))
 
 
-def _require_user_id(user_id: str | None) -> str:
+def _require_user_id(user_id: str | None, tool_arguments: dict) -> str:
     if user_id is not None and user_id.strip():
         return user_id.strip()
+
+    user_id_from_tool_arguments = _extract_customer_id_from_tool_arguments(tool_arguments)
+    if user_id_from_tool_arguments is not None:
+        return user_id_from_tool_arguments
+
+    logger.warning(
+        "Missing customer identity. tool_argument_keys=%s",
+        sorted(tool_arguments.keys()),
+    )
     raise ValueError(
         "Missing customer identity in Vapi payload. Pass customer.id or metadata.customer_id and reconnect OAuth for that same id."
     )
+
+
+def _extract_customer_id_from_tool_arguments(tool_arguments: dict) -> str | None:
+    direct_customer_id = tool_arguments.get("customer_id")
+    if isinstance(direct_customer_id, str) and direct_customer_id.strip():
+        return direct_customer_id.strip()
+
+    nested_candidates = [
+        _parse_arguments(tool_arguments.get("metadata")),
+        _parse_arguments(tool_arguments.get("variableValues")),
+        _parse_arguments(tool_arguments.get("context")),
+    ]
+    for candidate in nested_candidates:
+        customer_id = candidate.get("customer_id")
+        if isinstance(customer_id, str) and customer_id.strip():
+            return customer_id.strip()
+    return None
