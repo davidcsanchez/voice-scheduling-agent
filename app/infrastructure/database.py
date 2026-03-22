@@ -1,9 +1,12 @@
 import base64
+import logging
 import os
 import sqlite3
 from datetime import datetime
 
 from app.core.config import Settings
+
+logger = logging.getLogger(__name__)
 
 
 class SQLiteDatabase:
@@ -62,6 +65,11 @@ class TokenStore:
                 (user_id, token_json),
             )
             connection.commit()
+        logger.info(
+            "Saved Google OAuth tokens. user_id=%s token_chars=%s",
+            user_id,
+            len(token_json),
+        )
 
     def load_tokens(self, user_id: str) -> str | None:
         with self._database.connect() as connection:
@@ -69,6 +77,8 @@ class TokenStore:
                 "SELECT token_json FROM tokens WHERE user_id = ?",
                 (user_id,),
             ).fetchone()
+        found = row is not None
+        logger.info("Loaded Google OAuth tokens. user_id=%s found=%s", user_id, found)
         return row["token_json"] if row else None
 
 
@@ -84,6 +94,7 @@ class OAuthStateStore:
                 (state, datetime.utcnow().isoformat(), user_id),
             )
             connection.commit()
+        logger.info("Created OAuth state. user_id=%s", user_id)
         return state
 
     def consume_state(self, state: str) -> str | None:
@@ -93,10 +104,13 @@ class OAuthStateStore:
                 (state,),
             ).fetchone()
             if not row:
+                logger.warning("OAuth state not found or already consumed.")
                 return None
             connection.execute("DELETE FROM oauth_state WHERE state = ?", (state,))
             connection.commit()
-        return str(row["user_id"])
+        user_id = str(row["user_id"])
+        logger.info("Consumed OAuth state. resolved_user_id=%s", user_id)
+        return user_id
 
     def _generate_state(self) -> str:
         return base64.urlsafe_b64encode(os.urandom(24)).decode("utf-8")

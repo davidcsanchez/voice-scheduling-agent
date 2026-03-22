@@ -1,5 +1,6 @@
 from urllib.parse import urlencode
 from uuid import uuid4
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
@@ -9,6 +10,7 @@ from app.api.deps import get_state_store, get_token_store
 from app.core.config import Settings, get_settings
 
 router = APIRouter(tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/auth/google/start")
@@ -18,6 +20,7 @@ def start_google_auth(
     state_store=Depends(get_state_store),
 ) -> RedirectResponse:
     resolved_customer_id = _resolve_customer_id(customer_id)
+    logger.info("Starting Google OAuth flow. resolved_customer_id=%s", resolved_customer_id)
     state = state_store.create_state(resolved_customer_id)
     flow = Flow.from_client_config(
         {
@@ -58,6 +61,7 @@ def google_auth_callback(
     user_id = state_store.consume_state(state)
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid state")
+    logger.info("Google OAuth callback accepted. resolved_user_id=%s", user_id)
 
     flow = Flow.from_client_config(
         {
@@ -77,6 +81,7 @@ def google_auth_callback(
 
     credentials_json = flow.credentials.to_json()
     token_store.save_tokens(user_id, credentials_json)
+    logger.info("Google OAuth tokens persisted from callback. resolved_user_id=%s", user_id)
 
     query = urlencode({"customer_id": user_id})
     return RedirectResponse(
