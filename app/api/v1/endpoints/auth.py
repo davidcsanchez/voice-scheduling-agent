@@ -1,4 +1,5 @@
 from urllib.parse import urlencode
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
@@ -12,11 +13,12 @@ router = APIRouter(tags=["auth"])
 
 @router.get("/auth/google/start")
 def start_google_auth(
-    customer_id: str = Query(..., min_length=1),
+    customer_id: str | None = Query(default=None),
     settings: Settings = Depends(get_settings),
     state_store=Depends(get_state_store),
 ) -> RedirectResponse:
-    state = state_store.create_state(customer_id)
+    resolved_customer_id = _resolve_customer_id(customer_id)
+    state = state_store.create_state(resolved_customer_id)
     flow = Flow.from_client_config(
         {
             "web": {
@@ -37,6 +39,12 @@ def start_google_auth(
         prompt="consent",
     )
     return RedirectResponse(auth_url)
+
+
+def _resolve_customer_id(customer_id: str | None) -> str:
+    if customer_id and customer_id.strip():
+        return customer_id.strip()
+    return f"user-{uuid4().hex}"
 
 
 @router.get("/auth/google/callback")

@@ -9,7 +9,8 @@ A real-time voice scheduling assistant using Vapi and Google Calendar. The backe
 ## How to test the agent
 
 1. Complete Google OAuth:
-   - Open `https://YOUR-RENDER-URL.onrender.com/api/v1/auth/google/start?customer_id=YOUR_CUSTOMER_ID`
+   - Open `https://YOUR-RENDER-URL.onrender.com/api/v1/auth/google/start?customer_id=YOUR_CUSTOMER_ID` (optional)
+   - If `customer_id` is omitted, the backend generates one automatically.
    - Sign in and grant access
    - After callback, you will be redirected to `/dashboard?customer_id=YOUR_CUSTOMER_ID`
 2. Configure your Vapi agent with the tool schema in `vapi_agent.json` and set:
@@ -25,7 +26,7 @@ A real-time voice scheduling assistant using Vapi and Google Calendar. The backe
 3. Run the server:
    - `uvicorn app.main:app --reload`
 4. Start OAuth:
-   - `http://localhost:8000/api/v1/auth/google/start?customer_id=demo-user`
+   - `http://localhost:8000/api/v1/auth/google/start?customer_id=demo-user` (or omit `customer_id`)
 5. Open the dashboard (if not redirected automatically):
    - `http://localhost:8000/dashboard?customer_id=demo-user`
 

@@ -75,6 +75,23 @@ def test_start_google_auth_uses_customer_id(monkeypatch: pytest.MonkeyPatch) -> 
     assert response.headers["location"].startswith("https://accounts.google.com/o/oauth2/auth")
 
 
+def test_start_google_auth_generates_customer_id_when_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(auth, "Flow", FakeFlow)
+    state_store = FakeStateStore()
+
+    response = auth.start_google_auth(
+        customer_id=None,
+        settings=FakeSettings(),
+        state_store=state_store,
+    )
+
+    assert state_store.received_customer_id is not None
+    assert state_store.received_customer_id.startswith("user-")
+    assert response.headers["location"].startswith("https://accounts.google.com/o/oauth2/auth")
+
+
 def test_google_auth_callback_saves_tokens_for_state_user(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(auth, "Flow", FakeFlow)
     state_store = FakeStateStore(user_id="customer-42")
