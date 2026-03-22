@@ -89,11 +89,23 @@ def _normalize_tool_calls(raw_calls: list | None) -> list[dict]:
     for call in raw_calls:
         function = call.get("function", {})
         arguments = function.get("arguments") or call.get("arguments") or {}
+        parsed_arguments = _parse_arguments(arguments)
+        resolved_name = function.get("name") or call.get("name")
+        resolved_arguments = parsed_arguments
+
+        if resolved_name == "function_tool":
+            wrapped_name, wrapped_arguments = _extract_wrapped_function_call(parsed_arguments)
+            if wrapped_name:
+                resolved_name = wrapped_name
+                resolved_arguments = wrapped_arguments
+            elif _looks_like_meeting_arguments(parsed_arguments):
+                resolved_name = "create_calendar_event"
+
         normalized.append(
             {
                 "id": call.get("id") or call.get("toolCallId") or "unknown",
-                "name": function.get("name") or call.get("name"),
-                "arguments": _parse_arguments(arguments),
+                "name": resolved_name,
+                "arguments": resolved_arguments,
             }
         )
     return normalized
@@ -108,3 +120,41 @@ def _parse_arguments(arguments: object) -> dict:
     if isinstance(arguments, dict):
         return arguments
     return {}
+
+
+def _extract_wrapped_function_call(arguments: dict) -> tuple[str | None, dict]:
+    if not isinstance(arguments, dict):
+        return None, {}
+
+    direct_name = arguments.get("functionName") or arguments.get("toolName")
+    if isinstance(direct_name, str) and direct_name.strip():
+        wrapped_args = _extract_wrapped_arguments(arguments)
+        return direct_name.strip(), wrapped_args
+
+    function_payload = arguments.get("function")
+    if isinstance(function_payload, dict):
+        wrapped_name = function_payload.get("name")
+        if isinstance(wrapped_name, str) and wrapped_name.strip():
+            wrapped_args = _parse_arguments(function_payload.get("arguments") or {})
+            return wrapped_name.strip(), wrapped_args
+
+    return None, arguments
+
+
+def _extract_wrapped_arguments(arguments: dict) -> dict:
+    candidates = [
+        arguments.get("arguments"),
+        arguments.get("args"),
+        arguments.get("parameters"),
+        arguments.get("input"),
+    ]
+    for candidate in candidates:
+        parsed = _parse_arguments(candidate)
+        if parsed:
+            return parsed
+    return {}
+
+
+def _looks_like_meeting_arguments(arguments: dict) -> bool:
+    required = {"name", "date", "time", "timezone", "title"}
+    return required.issubset(set(arguments.keys()))
