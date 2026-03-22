@@ -22,6 +22,7 @@ async def vapi_webhook(
 ) -> dict:
     await verify_vapi_signature(request)
     payload = await request.json()
+    logger.warning("Webhook identity snapshot payload=%s", _identity_snapshot_from_payload(payload))
     tool_calls = _extract_tool_calls(payload)
     logger.info("Vapi webhook received. extracted_tool_calls=%s", len(tool_calls))
     if not tool_calls:
@@ -46,6 +47,11 @@ async def vapi_webhook(
 
         try:
             meeting = MeetingRequest.model_validate(tool_call["arguments"])
+            logger.warning(
+                "Webhook identity snapshot tool_call_id=%s tool_arguments=%s",
+                tool_call.get("id"),
+                _identity_snapshot_from_tool_arguments(tool_call["arguments"]),
+            )
             user_id = _require_user_id(
                 user_service.resolve_user_id(payload),
                 tool_call["arguments"],
@@ -195,3 +201,34 @@ def _extract_customer_id_from_tool_arguments(tool_arguments: dict) -> str | None
         if isinstance(customer_id, str) and customer_id.strip():
             return customer_id.strip()
     return None
+
+
+def _identity_snapshot_from_payload(payload: dict) -> dict:
+    return {
+        "customer_id": _safe_get(payload, "customer", "id"),
+        "customer_number": _safe_get(payload, "customer", "number"),
+        "metadata_customer_id": _safe_get(payload, "metadata", "customer_id"),
+        "message_metadata_customer_id": _safe_get(payload, "message", "metadata", "customer_id"),
+        "call_metadata_customer_id": _safe_get(payload, "call", "metadata", "customer_id"),
+    }
+
+
+def _identity_snapshot_from_tool_arguments(tool_arguments: dict) -> dict:
+    return {
+        "customer_id": _safe_get(tool_arguments, "customer_id"),
+        "metadata_customer_id": _safe_get(tool_arguments, "metadata", "customer_id"),
+        "variable_values_customer_id": _safe_get(tool_arguments, "variableValues", "customer_id"),
+        "context_customer_id": _safe_get(tool_arguments, "context", "customer_id"),
+    }
+
+
+def _safe_get(source: dict, *path: str) -> str | None:
+    current: object = source
+    for key in path:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    if current is None:
+        return None
+    text = str(current).strip()
+    return text if text else None

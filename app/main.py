@@ -220,10 +220,14 @@ def _build_dashboard_html(
                 stopButton.disabled = false;
                 setStatus("Starting voice call...");
                 try {{
-                    await vapi.start(vapiAssistantId, {{
+                    const assistantOverrides = {{
                         metadata: {{ customer_id: customerId }},
-                        variableValues: {{ customer_id: customerId }}
-                    }});
+                        variableValues: {{ customer_id: customerId }},
+                        context: {{ customer_id: customerId }}
+                    }};
+                    logDebug(`Sending customer_id to Vapi: ${{customerId}}`);
+                    logDebug(`assistantOverrides: ${{JSON.stringify(assistantOverrides)}}`);
+                    await vapi.start(vapiAssistantId, assistantOverrides);
                     logDebug("vapi.start resolved successfully.");
                     setStatus("Listening...", "ok");
                 }} catch (error) {{
@@ -249,6 +253,11 @@ def _build_dashboard_html(
                 talkButton.disabled = false;
                 stopButton.disabled = true;
                 setStatus("Call finished. Check your Google Calendar.", "ok");
+            }});
+
+            vapi.on("message", (message) => {{
+                const messageType = message?.type || "unknown";
+                logDebug(`Event: message type=${{messageType}}`);
             }});
 
             vapi.on("error", (error) => {{
