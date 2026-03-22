@@ -113,6 +113,17 @@ def _build_dashboard_html(
         button:disabled {{ background: #98a2b3; cursor: not-allowed; transform: none; }}
         #stop-button {{ background: #475467; }}
         #status {{ margin-top: 18px; font-weight: 600; color: var(--ink); }}
+        #debug {{
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 10px;
+            background: #f2f4f7;
+            color: #344054;
+            font-size: 0.9rem;
+            max-height: 180px;
+            overflow: auto;
+            white-space: pre-wrap;
+        }}
         .ok {{ color: var(--ok); }}
         .error {{ color: var(--error); margin-top: 12px; font-weight: 600; }}
         @media (max-width: 640px) {{
@@ -133,10 +144,12 @@ def _build_dashboard_html(
             <button id=\"stop-button\" disabled>End call</button>
         </div>
         <p id=\"status\">Ready.</p>
+        <pre id="debug">Diagnostics ready.</pre>
     </main>
 
-    <script src=\"https://cdn.jsdelivr.net/npm/@vapi-ai/web/dist/vapi.bundle.min.js\"></script>
-    <script>
+    <script type="module">
+        import Vapi from "https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.5.2/+esm";
+
         const vapiPublicKey = {public_key_json};
         const vapiAssistantId = {assistant_id_json};
         const customerId = {customer_id_json};
@@ -145,10 +158,17 @@ def _build_dashboard_html(
         const talkButton = document.getElementById("talk-button");
         const stopButton = document.getElementById("stop-button");
         const statusEl = document.getElementById("status");
+        const debugEl = document.getElementById("debug");
+
+        const logDebug = (message) => {{
+            const timestamp = new Date().toISOString();
+            debugEl.textContent += `\n[${{timestamp}}] ${{message}}`;
+        }};
 
         userIdEl.innerText = customerId;
 
         if (vapiPublicKey && vapiAssistantId) {{
+            logDebug("Vapi config found. Initializing SDK...");
             const vapi = new Vapi(vapiPublicKey);
 
             const setStatus = (text, cssClass = "") => {{
@@ -157,34 +177,47 @@ def _build_dashboard_html(
             }};
 
             talkButton.addEventListener("click", async () => {{
+                logDebug("Start button clicked.");
                 talkButton.disabled = true;
                 stopButton.disabled = false;
                 setStatus("Starting voice call...");
                 try {{
-                    await vapi.start(vapiAssistantId, {{ customer: {{ id: customerId }} }});
+                    await vapi.start(vapiAssistantId, {{ variableValues: {{ customer_id: customerId }} }});
+                    logDebug("vapi.start resolved successfully.");
                     setStatus("Listening...", "ok");
                 }} catch (error) {{
                     talkButton.disabled = false;
                     stopButton.disabled = true;
+                    logDebug(`vapi.start failed: ${{error?.message || error}}`);
                     setStatus(`Could not start call: ${{error.message || error}}`, "error");
                 }}
             }});
 
             stopButton.addEventListener("click", () => {{
+                logDebug("Stop button clicked.");
                 vapi.stop();
             }});
 
+            vapi.on("call-start", () => {{
+                logDebug("Event: call-start");
+                setStatus("Call connected.", "ok");
+            }});
+
             vapi.on("call-end", () => {{
+                logDebug("Event: call-end");
                 talkButton.disabled = false;
                 stopButton.disabled = true;
                 setStatus("Call finished. Check your Google Calendar.", "ok");
             }});
 
             vapi.on("error", (error) => {{
+                logDebug(`Event: error - ${{error?.message || error}}`);
                 talkButton.disabled = false;
                 stopButton.disabled = true;
                 setStatus(`Call error: ${{error.message || error}}`, "error");
             }});
+        }} else {{
+            logDebug("Vapi config missing. Start button disabled.");
         }}
     </script>
 </body>
